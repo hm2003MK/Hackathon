@@ -1,13 +1,17 @@
 import streamlit as st
+import streamlit.components.v1 as components
+import os
 from theme import apply_theme, render_sidebar
 from db import create_user, get_user
 
+# ======================================================
+# USER ID
+# ======================================================
 if "user_id" not in st.session_state:
     st.session_state.user_id = create_user()
 
-
 # ======================================================
-# PAGE CONFIG — ONLY HERE
+# PAGE CONFIG
 # ======================================================
 st.set_page_config(
     page_title="SparkPath – Entertainment Career Explorer",
@@ -15,11 +19,26 @@ st.set_page_config(
     layout="wide"
 )
 
-# Apply global theme + sidebar
+# Apply theme + sidebar
 apply_theme()
 
 # ======================================================
-# HOME / LANDING CONTENT
+# 🌌 LOAD GALAXY GRAPH HTML
+# ======================================================
+html_path = os.path.join(os.path.dirname(__file__), "career_map.html")
+
+if os.path.exists(html_path):
+    with open(html_path, "r", encoding="utf-8") as f:
+        galaxy_html = f.read()
+
+    # Full-width hero galaxy map
+    components.html(galaxy_html, height=550, scrolling=False)
+
+# Add spacing under the galaxy map
+st.markdown("<div style='height:40px'></div>", unsafe_allow_html=True)
+
+# ======================================================
+# MAIN LANDING SECTION
 # ======================================================
 col1, col2 = st.columns([3, 2])
 
@@ -52,8 +71,6 @@ with col1:
 
     st.markdown("---")
     st.markdown("#### Ready to try it?")
-
-    # Streamlit will automatically show the pages in the sidebar “Pages” menu.
     st.write("Go to **🎤 Career Explorer** in the left sidebar to get started.")
 
 with col2:
@@ -76,4 +93,5 @@ with col2:
         """,
         unsafe_allow_html=True
     )
+
 
