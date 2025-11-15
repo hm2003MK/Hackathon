@@ -1,7 +1,8 @@
+# pages/2_Insights_Dashboard.py
+
 import streamlit as st
 import pandas as pd
-
-from theme import apply_theme, render_sidebar
+from theme import apply_theme
 
 apply_theme()
 
@@ -17,17 +18,16 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-if "results" not in st.session_state or st.session_state.results is None:
-    st.warning("No results yet. Run the **🎤 Career Explorer** first.")
+# Load Spark results
+if "spark_results" not in st.session_state or st.session_state.spark_results is None:
+    st.warning("No results yet. Run the 🎤 Career Explorer first.")
     st.stop()
 
-results = st.session_state.results
+results = st.session_state.spark_results
 traits = results["traits"]
 matches = results["matches"]
 
-# ======================================================
-# INTERESTS CHART
-# ======================================================
+# ========== INTERESTS ==========
 st.markdown("### 🎨 Interest Breakdown")
 
 interests = traits.get("interests", {})
@@ -37,11 +37,9 @@ if interests:
     ).sort_values("Score", ascending=False)
     st.bar_chart(df_interests.set_index("Dimension"))
 else:
-    st.info("No structured interest scores were returned by the engine.")
+    st.info("No interest scores detected.")
 
-# ======================================================
-# TRANSFERABLE SKILLS
-# ======================================================
+# ========== SKILLS ==========
 st.markdown("### 🧰 Transferable Skills")
 
 skills = traits.get("transferable_skills", {})
@@ -51,32 +49,23 @@ if skills:
     ).sort_values("Score", ascending=False)
     st.bar_chart(df_skills.set_index("Skill"))
 else:
-    st.info("No structured transferable skills were returned by the engine.")
+    st.info("No skills detected.")
 
-# ======================================================
-# PASSION SIGNALS
-# ======================================================
-st.markdown("### 🔥 Passion Signals (Keywords)")
+# ========== PASSION SIGNALS ==========
+st.markdown("### 🔥 Passion Signals")
+ps = traits.get("passion_signals", [])
+st.write(", ".join(ps) if ps else "None detected.")
 
-passion_signals = traits.get("passion_signals", [])
-if passion_signals:
-    st.write(", ".join(passion_signals))
-else:
-    st.info("No passion signals were extracted for this run.")
-
-# ======================================================
-# CAREER MATCH SUMMARY
-# ======================================================
+# ========== MATCH SCORES ==========
 st.markdown("### 🎯 Career Match Scores")
 
 if matches:
     titles = [m[0] for m in matches[:5]]
     scores = [float(m[1]) for m in matches[:5]]
 
-    df_matches = pd.DataFrame({"Career": titles, "Match Score": scores})
+    df_matches = pd.DataFrame({"Career": titles, "Score": scores})
     st.dataframe(df_matches, use_container_width=True)
 else:
-    st.info("No matches were returned by the engine.")
+    st.info("No matches returned.")
 
-st.markdown("---")
-st.caption("These analytics can be extended to cohort-level views for schools, non-profits, or partners.")
+
