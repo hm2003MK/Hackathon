@@ -5,10 +5,11 @@ from botocore.exceptions import ClientError
 # ===============================================
 # AWS Bedrock Client
 # ===============================================
-bedrock = boto3.client("bedrock-runtime", region_name="us-east-2")
+bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
+
 
 # ✔ VALID Nova model
-MODEL_ID = "amazon.nova-lite-v1:0"
+MODEL_ID = "amazon.nova-micro-v1:0"
 
 # ===============================================
 # SYSTEM PROMPT
@@ -67,14 +68,17 @@ def ensure_profile_structure(profile):
 
     for mk in MEMORY_KEYS:
         val = profile["memory"].get(mk)
-        if isinstance(val, list):
-            profile["memory"][mk] = set(val)
-        elif isinstance(val, set):
-            pass
-        else:
-            profile["memory"][mk] = set()
 
+        if isinstance(val, list):
+            profile["memory"][mk] = val
+        elif isinstance(val, set):
+            profile["memory"][mk] = list(val)
+        else:
+            profile["memory"][mk] = []
+
+    # IMPORTANT FIX
     return profile
+
 
 # ============================================================
 # ADAPTIVE PERSONA SEEDS
@@ -116,20 +120,24 @@ def update_memory(profile, user_message: str):
     text = user_message.lower()
     mem = profile["memory"]
 
+    def add_unique(lst, item):
+        if item not in lst:
+            lst.append(item)
+
     if any(k in text for k in ["video", "tiktok", "film", "editing", "camera"]):
-        mem["mediums"].add("video")
+        add_unique(mem["mediums"], "video")
 
     if any(k in text for k in ["dance", "choreo"]):
-        mem["interests"].add("dance")
+        add_unique(mem["interests"], "dance")
 
     if any(k in text for k in ["music", "beat", "producer"]):
-        mem["interests"].add("music")
+        add_unique(mem["interests"], "music")
 
     if any(k in text for k in ["organize", "team", "lead"]):
-        mem["skills"].add("leadership")
+        add_unique(mem["skills"], "leadership")
 
     if "dream" in text or "goal" in text:
-        mem["goals"].add(user_message)
+        add_unique(mem["goals"], user_message)
 
     return profile
 
@@ -138,11 +146,11 @@ def update_memory(profile, user_message: str):
 # LLM TURN (Nova `converse` API)
 # ============================================================
 def run_llm_conversation_turn(chat_history, profile, phase):
-    """One conversational turn using Amazon Nova Lite."""
+    """One conversational turn using Amazon Titan Text Premier."""
 
     profile = ensure_profile_structure(profile)
 
-    # Convert sets → lists for JSON
+    # Convert memory fields to JSON-safe lists
     safe_memory = {
         "interests": list(profile["memory"]["interests"]),
         "skills": list(profile["memory"]["skills"]),
@@ -151,44 +159,44 @@ def run_llm_conversation_turn(chat_history, profile, phase):
     }
 
     # ---------------------------------------------------------
-    # Build Nova messages
+    # Build a Titan-compatible text prompt (NO Nova schema)
     # ---------------------------------------------------------
-    messages = [
-        {
-            "role": "system",
-            "content": [{"text": SYSTEM_PROMPT}]
-        },
-        {
-            "role": "assistant",
-            "content": [{
-                "text": json.dumps({
-                    "profile": profile,
-                    "memory": safe_memory,
-                    "phase": phase
-                })
-            }]
-        }
-    ]
+    prompt_text = "System: " + SYSTEM_PROMPT.strip() + "\n\n"
 
+    prompt_text += "Assistant: " + json.dumps({
+        "profile": profile,
+        "memory": safe_memory,
+        "phase": phase
+    }) + "\n\n"
+
+    # Add chat history
     for msg in chat_history:
-        messages.append({
-            "role": msg["role"],
-            "content": [{"text": msg["content"]}]
-        })
+        if msg["role"] == "user":
+            prompt_text += f"User: {msg['content']}\n"
+        else:
+            prompt_text += f"Assistant: {msg['content']}\n"
+
+    prompt_text += "\nAssistant:"
 
     # ---------------------------------------------------------
-    # Bedrock Nova call (correct API)
+    # Titan Text Premier invocation
     # ---------------------------------------------------------
-    response = bedrock.converse(
-        modelId=MODEL_ID,
-        messages=messages,
-        inferenceConfig={
-            "maxTokens": 300,
-            "temperature": 0.8
-        }
+    response = bedrock.invoke_model(
+        modelId="amazon.titan-text-premier-v1:0",
+        contentType="application/json",
+        accept="application/json",
+        body=json.dumps({
+            "inputText": prompt_text,
+            "textGenerationConfig": {
+                "maxTokenCount": 300,
+                "temperature": 0.8,
+                "topP": 0.9
+            }
+        })
     )
 
-    spark_text = response["output"]["message"]["content"][0]["text"]
+    resp = json.loads(response["body"].read())
+    spark_text = resp["results"][0]["outputText"]
 
     return spark_text, profile, phase, False
 
@@ -199,7 +207,6 @@ def run_llm_conversation_turn(chat_history, profile, phase):
 def run_spark_turn(chat_history, profile, phase):
     profile = ensure_profile_structure(profile)
     return run_llm_conversation_turn(chat_history, profile, phase)
-
 
 
 
