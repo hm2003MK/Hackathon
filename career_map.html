@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>SparkPath Career Galaxy</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    overflow: hidden;
+    font-family: "Inter", sans-serif;
+  }
+
+  /* --- Cinematic Galaxy Background --- */
+  #galaxy-bg {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 50% 40%, rgba(110,60,185,0.55), rgba(10,10,20,0.95));
+    z-index: -3;
+  }
+
+  /* Stars layer */
+  #stars {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    pointer-events: none;
+  }
+
+  /* Nebula overlay */
+  #nebula {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 60% 50%, rgba(255,255,255,0.05), rgba(0,0,0,0));
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  .label {
+    fill: rgba(255,255,255,0.92);
+    font-size: 13px;
+    font-weight: 500;
+    pointer-events: none;
+    text-shadow: 0 0 4px rgba(0,0,0,0.45);
+  }
+
+  .tooltip {
+    position: absolute;
+    padding: 8px 12px;
+    background: rgba(10,10,20,0.85);
+    color: white;
+    border-radius: 8px;
+    font-size: 13px;
+    pointer-events: none;
+    opacity: 0;
+    transition: 0.15s ease;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+</style>
+</head>
+
+<body>
+
+<div id="galaxy-bg"></div>
+<canvas id="stars"></canvas>
+<div id="nebula"></div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+/* ======================================================
+   STARFIELD ANIMATION (Galaxy Cinematic Effect)
+====================================================== */
+const starCanvas = document.getElementById("stars");
+const ctx = starCanvas.getContext("2d");
+function resizeStars() { starCanvas.width = innerWidth; starCanvas.height = innerHeight; }
+resizeStars();
+addEventListener("resize", resizeStars);
+
+let stars = [];
+for (let i = 0; i < 160; i++) {
+  stars.push({
+    x: Math.random() * innerWidth,
+    y: Math.random() * innerHeight,
+    size: Math.random() * 1.2,
+    speed: Math.random() * 0.3 + 0.1
+  });
+}
+
+function animateStars() {
+  ctx.clearRect(0, 0, starCanvas.width, starCanvas.height);
+  ctx.fillStyle = "white";
+
+  stars.forEach(s => {
+    ctx.globalAlpha = s.size / 1.5;
+    ctx.fillRect(s.x, s.y, s.size, s.size);
+
+    s.y += s.speed;
+    if (s.y > innerHeight) {
+      s.y = -2;
+      s.x = Math.random() * innerWidth;
+    }
+  });
+
+  requestAnimationFrame(animateStars);
+}
+animateStars();
+
+
+/* ======================================================
+   CAREER GRAPH DATA (Full Midsize 28 Careers)
+====================================================== */
+const nodes = [
+  { id:"Talent Management", group:"Business", desc:"Guides artist careers and long-term growth." },
+  { id:"Production Management", group:"Business", desc:"Manages budgets, schedules and teams." },
+  { id:"Event Management", group:"Business", desc:"Runs concerts, premieres and live shows." },
+  { id:"Marketing & PR", group:"Business", desc:"Promotes artists and productions." },
+  { id:"Casting", group:"Business", desc:"Chooses performers for roles." },
+
+  { id:"Entertainment Writer", group:"Writing", desc:"Covers movies, music and culture." },
+  { id:"Content Creator", group:"Writing", desc:"Makes digital/social content." },
+
+  { id:"Musician/Singer", group:"Music", desc:"Performs vocals or instruments." },
+  { id:"Music Producer", group:"Music", desc:"Shapes the creative sound." },
+  { id:"Songwriter", group:"Music", desc:"Writes lyrics and melodies." },
+  { id:"Audio Engineer", group:"Music", desc:"Records and mixes sound." },
+
+  { id:"Animator", group:"VFX", desc:"Creates animation and motion graphics." },
+  { id:"Graphic Design Artist", group:"VFX", desc:"Designs branding and visuals." },
+
+  { id:"Actor / Actress", group:"Film", desc:"Performs roles on screen or stage." },
+  { id:"Directing", group:"Film", desc:"Leads creative vision of productions." },
+  { id:"Cinematography", group:"Film", desc:"Designs lighting and camera shots." },
+  { id:"Video Editor", group:"Film", desc:"Assembles footage into stories." },
+  { id:"Sound Design", group:"Film", desc:"Builds audio environments." },
+  { id:"Set Design/Engineer", group:"Film", desc:"Builds physical environments for film." },
+  { id:"Makeup Artist", group:"Film", desc:"Creates on-camera makeup and looks." },
+
+  { id:"Sports Broadcaster", group:"Sports", desc:"Covers sports live on air." },
+  { id:"Game Day Operations", group:"Sports", desc:"Manages logistics for live sports events." },
+  { id:"Talent Recruitment", group:"Sports", desc:"Recruits performers or athletes." },
+
+  { id:"Dance Videographer", group:"Dance", desc:"Films movement/dance pieces." },
+  { id:"Choreographer", group:"Dance", desc:"Creates dance routines." },
+  { id:"Backup Dancer", group:"Dance", desc:"Performs behind lead artists." },
+  { id:"Theatre Performer", group:"Dance", desc:"Performs on live stage." }
+];
+
+const links = [
+  { source:"Music Producer", target:"Songwriter" },
+  { source:"Music Producer", target:"Audio Engineer" },
+  { source:"Musician/Singer", target:"Songwriter" },
+
+  { source:"Cinematography", target:"Directing" },
+  { source:"Directing", target:"Actor / Actress" },
+  { source:"Video Editor", target:"Cinematography" },
+  { source:"Makeup Artist", target:"Actor / Actress" },
+  { source:"Set Design/Engineer", target:"Directing" },
+
+  { source:"Casting", target:"Talent Management" },
+  { source:"Marketing & PR", target:"Content Creator" },
+  { source:"Production Management", target:"Event Management" },
+
+  { source:"Game Day Operations", target:"Sports Broadcaster" },
+  { source:"Talent Recruitment", target:"Sports Broadcaster" },
+
+  { source:"Dance Videographer", target:"Backup Dancer" },
+  { source:"Choreographer", target:"Theatre Performer" }
+];
+
+const colors = {
+  Business:"#ffbd5e",
+  Writing:"#ff7d9a",
+  Music:"#ff6a6a",
+  VFX:"#b28bff",
+  Film:"#6bbcff",
+  Sports:"#4cd0a3",
+  Dance:"#fda4c8"
+};
+
+
+/* ======================================================
+   DRAW GRAPH (full-screen)
+====================================================== */
+const width = window.innerWidth;
+const height = window.innerHeight;
+
+const svg = d3.select("body")
+  .append("svg")
+  .attr("width", width)
+  .attr("height", height)
+  .style("position", "absolute")
+  .style("inset", "0")
+  .style("z-index", "1");
+
+const container = svg.append("g");
+
+svg.call(
+  d3.zoom().scaleExtent([0.55, 1.6]).on("zoom", e => container.attr("transform", e.transform))
+);
+
+const tooltip = d3.select("#tooltip");
+
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(155))
+  .force("charge", d3.forceManyBody().strength(-320))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(42));
+
+const link = container.append("g")
+  .selectAll("line")
+  .data(links)
+  .enter().append("line")
+  .attr("stroke", "rgba(255,255,255,0.18)")
+  .attr("stroke-width", 1.5);
+
+const node = container.append("g")
+  .selectAll("circle")
+  .data(nodes)
+  .enter().append("circle")
+  .attr("r", 15)
+  .attr("fill", d => colors[d.group])
+  .attr("stroke", "white")
+  .attr("stroke-width", 1.4)
+  .style("cursor", "pointer")
+  .style("filter", "drop-shadow(0 2px 6px rgba(0,0,0,0.45))")
+  .on("mouseenter", function(event, d) {
+    d3.select(this).transition().duration(130).attr("r", 18);
+    tooltip.style("opacity", 1).html(`<b>${d.id}</b><br>${d.desc}`)
+      .style("left", event.pageX + 15 + "px")
+      .style("top", event.pageY + 5 + "px");
+  })
+  .on("mousemove", event => {
+    tooltip.style("left", event.pageX + 15 + "px")
+           .style("top", event.pageY + 5 + "px");
+  })
+  .on("mouseleave", function() {
+    d3.select(this).transition().duration(130).attr("r", 15);
+    tooltip.style("opacity", 0);
+  });
+
+const label = container.append("g")
+  .selectAll("text")
+  .data(nodes)
+  .enter().append("text")
+  .attr("class", "label")
+  .text(d => d.id);
+
+simulation.on("tick", () => {
+  link.attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+  node.attr("cx", d => d.x).attr("cy", d => d.y);
+  label.attr("x", d => d.x + 22).attr("y", d => d.y + 5);
+});
+</script>
+
+</body>
+</html>
+

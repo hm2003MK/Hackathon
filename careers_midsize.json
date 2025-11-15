@@ -1,0 +1,144 @@
+{
+  "careers": [
+    {
+      "name": "Talent Management",
+      "category": "Business & Management",
+      "description": "Oversees the development, branding, and long-term careers of artists and performers, helping them choose opportunities and manage their image."
+    },
+    {
+      "name": "Production Management",
+      "category": "Business & Management",
+      "description": "Plans and manages budgets, schedules, crew, and logistics to keep film, TV, or live productions running smoothly."
+    },
+    {
+      "name": "Event Management",
+      "category": "Business & Management",
+      "description": "Organizes and runs concerts, premieres, festivals, and other entertainment events from planning to showtime."
+    },
+    {
+      "name": "Marketing & PR",
+      "category": "Business & Management",
+      "description": "Promotes artists, shows, and brands through campaigns, social media, press outreach, and creative storytelling."
+    },
+    {
+      "name": "Casting",
+      "category": "Business & Management",
+      "description": "Helps choose the right actors, dancers, and performers for roles in film, TV, theater, and commercials."
+    },
+    {
+      "name": "Entertainment Writer",
+      "category": "Writing & Journalism",
+      "description": "Writes about movies, music, shows, and celebrities through reviews, recaps, interviews, and opinion pieces."
+    },
+    {
+      "name": "Content Creator",
+      "category": "Digital Media",
+      "description": "Creates short-form videos, posts, and series for platforms like TikTok, YouTube, and Instagram around entertainment topics."
+    },
+    {
+      "name": "Musician/Singer",
+      "category": "Music",
+      "description": "Performs vocals or instruments for recordings, live shows, and collaborative music projects."
+    },
+    {
+      "name": "Music Producer",
+      "category": "Music",
+      "description": "Shapes the sound, arrangement, and creative direction of songs and projects in the studio."
+    },
+    {
+      "name": "Songwriter",
+      "category": "Music",
+      "description": "Writes lyrics, melodies, and hooks for artists, soundtracks, and commercial music."
+    },
+    {
+      "name": "Audio Engineer",
+      "category": "Music",
+      "description": "Records, mixes, and polishes audio for songs, podcasts, films, and live sessions using studio technology."
+    },
+    {
+      "name": "Animator",
+      "category": "Animation & VFX",
+      "description": "Creates animated characters, motion graphics, and visual effects for film, TV, games, and social content."
+    },
+    {
+      "name": "Graphic Design Artist",
+      "category": "Animation & VFX",
+      "description": "Designs posters, cover art, social graphics, and visual branding for entertainment projects."
+    },
+    {
+      "name": "Actor / Actress",
+      "category": "Film & Television",
+      "description": "Portrays characters in film, TV, web series, commercials, and theater using voice, expression, and movement."
+    },
+    {
+      "name": "Directing",
+      "category": "Film & Television",
+      "description": "Leads the creative vision of a project, guiding performers and crew to bring a script or concept to life."
+    },
+    {
+      "name": "Cinematography",
+      "category": "Film & Television",
+      "description": "Designs and captures the visual look of a project through camera angles, lenses, and lighting."
+    },
+    {
+      "name": "Video Editor",
+      "category": "Film & Television",
+      "description": "Cuts and assembles footage, adds sound and graphics, and controls pacing to tell a clear visual story."
+    },
+    {
+      "name": "Sound Design",
+      "category": "Film & Television",
+      "description": "Creates sound effects, ambience, and audio textures that make scenes feel real and immersive."
+    },
+    {
+      "name": "Set Design/Engineer",
+      "category": "Film & Television",
+      "description": "Designs and helps build physical sets and environments for movies, TV shows, and stage productions."
+    },
+    {
+      "name": "Makeup Artist",
+      "category": "Film & Television",
+      "description": "Applies makeup and special effects looks for actors, performers, and on-camera talent."
+    },
+    {
+      "name": "Social Media Manager",
+      "category": "Digital Media",
+      "description": "Plans content, posts, and campaigns for brands, shows, or talent while tracking engagement and trends."
+    },
+    {
+      "name": "Talent Recruitment",
+      "category": "Sports & Entertainment",
+      "description": "Finds and recruits performers, athletes, or creative talent for teams, productions, or agencies."
+    },
+    {
+      "name": "Sports Broadcaster",
+      "category": "Sports Media",
+      "description": "Covers games and sports stories on air through hosting, commentary, or sideline reporting."
+    },
+    {
+      "name": "Game Day Operations",
+      "category": "Sports Media",
+      "description": "Runs behind-the-scenes logistics for live games, from timing and cues to fan experience elements."
+    },
+    {
+      "name": "Dance Videographer",
+      "category": "Dance & Performance",
+      "description": "Films dancers and choreography in a way that highlights movement, rhythm, and emotion."
+    },
+    {
+      "name": "Choreographer",
+      "category": "Dance & Performance",
+      "description": "Creates and teaches dance routines for music videos, tours, stage shows, and performances."
+    },
+    {
+      "name": "Backup Dancer",
+      "category": "Dance & Performance",
+      "description": "Performs choreographed routines behind lead artists in performances, tours, and music videos."
+    },
+    {
+      "name": "Theatre Performer",
+      "category": "Dance & Performance",
+      "description": "Performs in live stage productions, combining acting, movement, and sometimes singing."
+    }
+  ]
+}
