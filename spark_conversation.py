@@ -2,10 +2,11 @@
 import os
 import json
 from groq import Groq
+from dotenv import load_dotenv
+load_dotenv()
 
-# ============================================================
-# GROQ CLIENT
-# ============================================================
+
+# Groq Client
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 MODEL_ID = "llama-3.1-8b-instant"
@@ -16,82 +17,30 @@ Warm, friendly, Gen-Z conversational tone.
 Ask ONE question at a time.
 Your goal: gather enough info to match the user to top 3 entertainment careers.
 STOP asking questions once you have enough info.
+When you are ready, simply output the 3 careers directly.
 """
 
 
 # ============================================================
-# PROFILE NORMALIZATION (exported)
+# Detect if Spark should stop talking + produce careers
 # ============================================================
-def ensure_profile_structure(profile):
-    """Ensure the Spark profile has correct structure."""
-    if not isinstance(profile, dict):
-        profile = {}
-
-    fields = [
-        "interests", "mediums", "strengths", "work_style",
-        "environment", "experience", "tools", "goals",
-        "preferences", "vibe_summary"
+def conversation_is_complete(reply: str):
+    triggers = [
+        "here are three careers",
+        "here are 3 careers",
+        "top 3 careers",
+        "i've got three careers",
+        "based on our chat",
+        "3 entertainment careers",
+        "three entertainment careers"
     ]
-
-    for f in fields:
-        if f not in profile:
-            profile[f] = [] if f != "vibe_summary" else ""
-
-        if isinstance(profile[f], set):
-            profile[f] = list(profile[f])
-
-        if f != "vibe_summary" and not isinstance(profile[f], list):
-            profile[f] = []
-
-    # Memory block
-    if "memory" not in profile or not isinstance(profile["memory"], dict):
-        profile["memory"] = {}
-
-    for key in ["interests", "skills", "mediums", "goals"]:
-        val = profile["memory"].get(key)
-        profile["memory"][key] = list(val) if isinstance(val, (list, set)) else []
-
-    # Persona scoring seeds
-    if "persona_seeds" not in profile:
-        profile["persona_seeds"] = {}
-
-    for s in [
-        "movement_expression", "visual_storytelling", "sound_design",
-        "narrative_thinking", "creative_leadership", "aesthetic_sense",
-        "technical_builder"
-    ]:
-        if s not in profile["persona_seeds"]:
-            profile["persona_seeds"][s] = 0
-
-    return profile
+    return any(t in reply.lower() for t in triggers)
 
 
 # ============================================================
-# TRAIT COMPLETENESS CHECK
-# ============================================================
-def has_enough_data(traits):
-    """Decide when Spark stops asking questions."""
-    interests = traits.get("interests", {})
-    skills = traits.get("transferable_skills", {})
-    signals = traits.get("passion_signals", [])
-
-    if len(interests) >= 2:
-        return True
-    if len(skills) >= 2:
-        return True
-    if len(signals) >= 3:
-        return True
-
-    return False
-
-
-# ============================================================
-# MAIN SPARK TURN (exported)
+# Main Groq conversation turn
 # ============================================================
 def run_spark_turn(chat_history, profile, phase):
-    profile = ensure_profile_structure(profile)
-
-    # Build Groq messages
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     messages.extend(chat_history)
 
@@ -104,29 +53,16 @@ def run_spark_turn(chat_history, profile, phase):
 
     spark_reply = response.choices[0].message.content
 
-    # Extract traits to decide if Spark should end
-    from match_student_to_careers import extract_traits
-
-    user_text = " ".join(
-        m["content"] for m in chat_history if m["role"] == "user"
-    )
-
-    traits_chat = [
-        {"role": "assistant", "content": "You are Spark, a creative career coach."},
-        {"role": "user", "content": user_text},
-    ]
-
-    traits = extract_traits(traits_chat)
-    ready = has_enough_data(traits)
+    # Tell app when to summarize/match
+    ready = conversation_is_complete(spark_reply)
 
     return spark_reply, profile, phase, ready
 
 
 # ============================================================
-# EXPORTED SYMBOLS
+# Export symbols
 # ============================================================
-__all__ = ["run_spark_turn", "ensure_profile_structure"]
-
+__all__ = ["run_spark_turn", "conversation_is_complete"]
 
 
 
