@@ -5,7 +5,6 @@ import json
 
 from theme import apply_theme
 from spark_conversation import run_spark_turn
-from spark_conversation import ensure_profile_structure
 from db import update_user, add_saved_career
 
 from match_student_to_careers import (
@@ -15,19 +14,6 @@ from match_student_to_careers import (
     build_report,
     career_embeddings
 )
-
-# ======================================================
-# JSON-SAFE CONVERTER (Fixes: "set is not JSON serializable")
-# ======================================================
-def make_json_safe(obj):
-    """Recursively convert sets → lists for JSON serialization."""
-    if isinstance(obj, set):
-        return list(obj)
-    if isinstance(obj, dict):
-        return {k: make_json_safe(v) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [make_json_safe(x) for x in obj]
-    return obj
 
 # ======================================================
 # APPLY THEME
@@ -54,95 +40,78 @@ st.markdown(
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-if "spark_profile" not in st.session_state:
-    st.session_state.spark_profile = ensure_profile_structure({
-        "interests": [],
-        "mediums": [],
-        "strengths": [],
-        "work_style": [],
-        "environment": [],
-        "experience": [],
-        "tools": [],
-        "goals": [],
-        "preferences": [],
-        "vibe_summary": "",
-        "persona_seeds": {},
-        "memory": {}
-    })
-else:
-    st.session_state.spark_profile = ensure_profile_structure(
-        st.session_state.spark_profile
-    )
+if "summary_ready" not in st.session_state:
+    st.session_state.summary_ready = False
 
-if "spark_phase" not in st.session_state:
-    st.session_state.spark_phase = "warmup"
+if "results" not in st.session_state:
+    st.session_state.results = None
 
-if "spark_ready" not in st.session_state:
-    st.session_state.spark_ready = False
-
-if "spark_results" not in st.session_state:
-    st.session_state.spark_results = None
-
-user_id = st.session_state.get("user_id")  # created in app.py
+user_id = st.session_state.get("user_id")
 
 # ======================================================
-# INITIAL BOT MESSAGE
+# INITIAL MESSAGE
 # ======================================================
 if not st.session_state.chat_history:
-    opening = (
-        "Hey, I’m Spark ✨ Tell me about something creative you naturally "
-        "gravitate toward—TikToks, dance, music, fashion, film, design… "
-        "whatever feels most you."
-    )
-    st.session_state.chat_history.append({"role": "assistant", "content": opening})
+    st.session_state.chat_history.append({
+        "role": "assistant",
+        "content": (
+            "Hey, I’m Spark ✨ Tell me about something creative you naturally "
+            "gravitate toward—TikToks, dance, music, fashion, film, design… "
+            "whatever feels most you."
+        )
+    })
 
 # ======================================================
-# DISPLAY CHAT HISTORY
+# SHOW CHAT
 # ======================================================
 for msg in st.session_state.chat_history:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
 # ======================================================
-# CHAT INPUT (disabled if summary is done)
+# USER INPUT
 # ======================================================
-if not st.session_state.spark_ready:
+if not st.session_state.summary_ready:
     user_input = st.chat_input("Tell Spark about your creative world...")
 else:
     user_input = None
 
 if user_input:
-    # 1. Add user message
-    st.session_state.chat_history.append({"role": "user", "content": user_input})
-
-    # 2. Run one conversational turn
-    spark_text, new_profile, new_phase, ready = run_spark_turn(
-        chat_history=st.session_state.chat_history,
-        profile=st.session_state.spark_profile,
-        phase=st.session_state.spark_phase
+    # Add user msg
+    st.session_state.chat_history.append(
+        {"role": "user", "content": user_input}
     )
 
-    st.session_state.spark_profile = new_profile
-    st.session_state.spark_phase = new_phase
-    st.session_state.spark_ready = ready
+    # Run Groq chat turn
+    spark_reply, _, _, _ = run_spark_turn(
+        st.session_state.chat_history,
+        profile={},       # unused with Groq
+        phase="chat"      # unused with Groq
+    )
 
-    # 3. Show Spark’s reply
-    st.session_state.chat_history.append({"role": "assistant", "content": spark_text})
+    st.session_state.chat_history.append(
+        {"role": "assistant", "content": spark_reply}
+    )
 
-    # Force rerender so new messages appear immediately
-    st.experimental_rerun()
+    # Check if Spark asked something like "OK, ready for summary?"
+    if any(word in spark_reply.lower() for word in ["summarize", "summary", "pull this together", "ready?"]):
+        st.session_state.summary_ready = True
+
+    st.rerun()
 
 # ======================================================
-# WHEN READY: RUN MATCHING ENGINE
+# WHEN USER FINISHES → RUN MATCHING ENGINE
 # ======================================================
-if st.session_state.spark_ready and st.session_state.spark_results is None:
-    with st.spinner("Got it. Let me pull your vibe together into a SparkPath profile… ✨"):
+if st.session_state.summary_ready and st.session_state.results is None:
 
-        # Combine all user messages into one block for trait extraction
+    with st.spinner("Got it. Let me pull your vibe together… ✨"):
+
         user_text = " ".join(
-            m["content"] for m in st.session_state.chat_history if m["role"] == "user"
+            m["content"] for m in st.session_state.chat_history
+            if m["role"] == "user"
         )
 
+        # Build trait extraction chat
         chat_for_traits = [
             {"role": "assistant", "content": "You are Spark, an entertainment career coach."},
             {"role": "user", "content": user_text}
@@ -150,14 +119,8 @@ if st.session_state.spark_ready and st.session_state.spark_results is None:
 
         traits = extract_traits(chat_for_traits)
 
-        # -----------------------------------------
-        # FIXED: convert profile to JSON-safe format
-        # -----------------------------------------
-        safe_profile = make_json_safe(st.session_state.spark_profile)
-
-        # Build embedding input: structured profile + freeform text
+        # Build embedding input
         text_block = (
-            json.dumps(safe_profile) + " " +
             json.dumps(traits.get("interests", {})) + " " +
             json.dumps(traits.get("transferable_skills", {})) + " " +
             " ".join(traits.get("passion_signals", [])) + " " +
@@ -167,56 +130,60 @@ if st.session_state.spark_ready and st.session_state.spark_results is None:
         emb = get_embedding(text_block)
         matches = match_careers(emb, career_embeddings)
 
-        # ---------------------
-        # Persona Inference
-        # ---------------------
-        def infer_persona(traits_obj, combined_text: str):
+        # Persona logic
+        def infer_persona(traits_obj, combined_text):
             blob = (traits_obj.get("vibe_summary", "") + " " + combined_text).lower()
+
             if any(k in blob for k in ["dance", "movement", "choreo"]):
-                return {
-                    "name": "The Movement Storyteller",
-                    "blurb": "You express emotion through movement and physical energy."
-                }
+                return {"name": "The Movement Storyteller", "blurb": "You express emotion through movement and rhythm."}
+
             if any(k in blob for k in ["camera", "film", "edit", "video"]):
-                return {
-                    "name": "The Visual Storyteller",
-                    "blurb": "You think in scenes and frames, and see stories in images."
-                }
-            if any(k in blob for k in ["music", "producer", "sound", "beat"]):
-                return {
-                    "name": "The Music Architect",
-                    "blurb": "You shape feelings and stories through sound and rhythm."
-                }
-            if any(k in blob for k in ["write", "script", "story", "dialogue"]):
-                return {
-                    "name": "The Story Weaver",
-                    "blurb": "You craft emotion and meaning through ideas and words."
-                }
-            return {
-                "name": "The Creative Explorer",
-                "blurb": "You’re multi-curious — SparkPath helps you test which paths fit."
-            }
+                return {"name": "The Visual Storyteller", "blurb": "You see stories in images and scenes."}
+
+            if any(k in blob for k in ["music", "sound", "producer"]):
+                return {"name": "The Music Architect", "blurb": "You shape energy through sound."}
+
+            if any(k in blob for k in ["write", "script", "story"]):
+                return {"name": "The Story Weaver", "blurb": "You craft stories and emotion through words."}
+
+            return {"name": "The Creative Explorer", "blurb": "You have wide creative interests."}
 
         persona = infer_persona(traits, user_text)
         report = build_report(traits, matches)
 
-        # Store everything in session
-        st.session_state.spark_results = {
+        # Save
+        st.session_state.results = {
             "traits": traits,
             "matches": matches,
             "persona": persona,
-            "report": report,
+            "report": report
         }
 
-        # Save to DynamoDB
         if user_id is not None:
-            update_user(
-                user_id,
-                {
-                    "answers": {"chat_history": st.session_state.chat_history},
-                    "traits": traits,
-                    "persona": persona,
-                    "matches": matches,
-                    "profile": st.session_state.spark_profile,
-                }
-            )
+            update_user(user_id, {
+                "answers": {"chat_history": st.session_state.chat_history},
+                "traits": traits,
+                "persona": persona,
+                "matches": matches,
+            })
+
+# ======================================================
+# DISPLAY RESULTS
+# ======================================================
+if st.session_state.results:
+    results = st.session_state.results
+    persona = results["persona"]
+    matches = results["matches"]
+
+    st.markdown("## 🌟 Your Creative Identity")
+    st.markdown(f"### **{persona['name']}**")
+    st.markdown(persona["blurb"])
+
+    st.markdown("## 🎯 Top Career Matches")
+    for title, score in matches[:3]:
+        st.markdown(f"**{title}** — match score: `{score:.3f}`")
+
+    st.markdown("## 📄 Full SparkPath Report")
+    st.code(results["report"])
+
+
